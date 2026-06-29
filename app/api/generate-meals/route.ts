@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
     /* 1. Parse request body */
     const body = await request.json();
     const ingredients: string[] = body.ingredients ?? [];
+    const childName: string = body.childName ?? "Anak";
+    const allergies: string[] = body.allergies ?? [];
 
     if (!ingredients.length) {
       return Response.json(
@@ -74,11 +76,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    /* 3. Build user prompt */
+    /* 3. Build user prompt & customized system prompt */
+    const allergyRules = allergies.length > 0 
+      ? `\nCRITICAL SAFETY CONSTRAINT: The child is ALLERGIC to: ${allergies.join(", ")}. Do NOT use these ingredients under any circumstances. Even if they are listed as available ingredients, EXCLUDE them from all recipes.` 
+      : "";
+
+    const dynamicSystemPrompt = `${SYSTEM_PROMPT}${allergyRules}\nNote: The child's name is ${childName}. Make sure the recommendations fit.`;
+
     const userPrompt = `Bahan-bahan di kulkasku saat ini:
 ${ingredients.map((i, idx) => `${idx + 1}. ${i}`).join("\n")}
 
-Buatkan matrix 5 meal MPASI untuk besok. Kembalikan hanya JSON yang valid.`;
+Buatkan matrix 5 meal MPASI untuk ${childName} besok. Kembalikan hanya JSON yang valid.`;
 
     /* 4. Call Groq API (LLaMA 3.3 70B — fast & free) */
     const groq = new Groq({ apiKey });
@@ -86,7 +94,7 @@ Buatkan matrix 5 meal MPASI untuk besok. Kembalikan hanya JSON yang valid.`;
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: dynamicSystemPrompt },
         { role: "user",   content: userPrompt },
       ],
       temperature: 0.7,
