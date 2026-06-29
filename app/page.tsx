@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { MealMatrix, MealEntry } from "./api/generate-meals/route";
 
 /* ─── SVG Icon Components ──────────────────── */
@@ -74,6 +74,18 @@ const IconRefresh = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23,4 23,10 17,10" />
     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+  </svg>
+);
+
+const IconFolder = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const IconTikTok = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.09-1.5-1.1-1.02-1.7-2.48-1.78-3.99-.01 2.37 0 7.86 0 10.22-.05 1.56-.5 3.19-1.54 4.38-1.45 1.71-3.92 2.5-6.11 2.37-2.31-.08-4.73-1.22-5.83-3.29-1.28-2.28-1.07-5.46.73-7.5 1.4-1.67 3.8-2.51 5.96-2.2v4.21c-1.12-.13-2.35.21-3.03 1.14-.73.91-.7 2.32-.01 3.23.63.92 1.83 1.34 2.91 1.22.99-.07 1.9-.8 2.12-1.77.22-.84.14-11.96.14-14.73z"/>
   </svg>
 );
 
@@ -157,14 +169,21 @@ function MealCard({
   slot,
   meal,
   index,
+  onSaveFavorite,
+  isFavorite,
 }: {
   slot: typeof MEAL_SLOTS[number];
   meal: MealEntry;
   index: number;
+  onSaveFavorite: (meal: MealEntry) => void;
+  isFavorite: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const delayClass = ["stagger-1","stagger-2","stagger-3","stagger-4","stagger-5"][index];
   const isBreakfast = slot.id === "breakfast";
+
+  // Build TikTok search query URL
+  const tiktokSearchUrl = `https://www.tiktok.com/search?q=${encodeURIComponent("Resep MPASI " + meal.name)}`;
 
   return (
     <div
@@ -192,6 +211,14 @@ function MealCard({
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => onSaveFavorite(meal)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-[rgba(255,255,255,0.06)]"
+            style={{ color: isFavorite ? "var(--color-amber-400)" : "var(--text-muted)" }}
+            title="Simpan ke Folder Favorit"
+          >
+            <IconHeart size={16} filled={isFavorite} />
+          </button>
           {isBreakfast && meal.cookingTime <= 30 && (
             <span className="badge-fast"><IconClock size={11} />{meal.cookingTime} min</span>
           )}
@@ -218,18 +245,35 @@ function MealCard({
         </p>
       </div>
 
-      {/* Expand / Collapse Ingredients & Steps */}
-      <button
-        id={`expand-${slot.id}`}
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between py-2 rounded-xl px-3 transition-all"
-        style={{ background: "rgba(45,212,191,0.05)", border: "1px solid var(--border-subtle)" }}
-      >
-        <span className="text-xs font-semibold" style={{ color: "var(--text-accent)", fontFamily: "var(--font-display)" }}>
-          {expanded ? "Sembunyikan Resep" : "Lihat Resep Lengkap"}
-        </span>
-        <IconChevron size={14} open={expanded} />
-      </button>
+      {/* Action Buttons */}
+      <div className="flex gap-2">
+        <button
+          id={`expand-${slot.id}`}
+          onClick={() => setExpanded((v) => !v)}
+          className="flex-1 flex items-center justify-between py-2.5 rounded-xl px-3 transition-all"
+          style={{ background: "rgba(45,212,191,0.05)", border: "1px solid var(--border-subtle)" }}
+        >
+          <span className="text-xs font-semibold" style={{ color: "var(--text-accent)", fontFamily: "var(--font-display)" }}>
+            {expanded ? "Sembunyikan Resep" : "Lihat Resep Lengkap"}
+          </span>
+          <IconChevron size={14} open={expanded} />
+        </button>
+
+        <a
+          href={tiktokSearchUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all hover:bg-[rgba(255,255,255,0.08)] active:scale-95"
+          style={{
+            background: "rgba(0,0,0,0.4)",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--text-primary)"
+          }}
+        >
+          <IconTikTok size={13} />
+          <span>TikTok Video</span>
+        </a>
+      </div>
 
       {expanded && (
         <div className="mt-3 space-y-3 animate-fade-in">
@@ -285,6 +329,51 @@ export default function HomePage() {
   const [matrix, setMatrix] = useState<MealMatrix | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /* ─── User Profile & Settings State ────────── */
+  const [childName, setChildName] = useState("Adek");
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [newAllergyInput, setNewAllergyInput] = useState("");
+
+  /* ─── Favorite Collection Folders State ────── */
+  const [favorites, setFavorites] = useState<{ id: string; meal: MealEntry; folderId: string }[]>([]);
+  const [folders, setFolders] = useState<{ id: string; name: string }[]>([
+    { id: "default", name: "Semua Favorit" },
+    { id: "fast", name: "Sarapan Cepat" },
+    { id: "nogtm", name: "Anti GTM" }
+  ]);
+  const [activeFolderId, setActiveFolderId] = useState("default");
+  const [newFolderName, setNewFolderName] = useState("");
+  const [selectedMealForSave, setSelectedMealForSave] = useState<MealEntry | null>(null);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedName = localStorage.getItem("mpasi_childName");
+      if (storedName) setChildName(storedName);
+
+      const storedAllergies = localStorage.getItem("mpasi_allergies");
+      if (storedAllergies) setAllergies(JSON.parse(storedAllergies));
+
+      const storedFavorites = localStorage.getItem("mpasi_favorites");
+      if (storedFavorites) setFavorites(JSON.parse(storedFavorites));
+
+      const storedFolders = localStorage.getItem("mpasi_folders");
+      if (storedFolders) setFolders(JSON.parse(storedFolders));
+    }
+  }, []);
+
+  // Save to localStorage when updated
+  const saveProfileData = (name: string, allergyList: string[]) => {
+    localStorage.setItem("mpasi_childName", name);
+    localStorage.setItem("mpasi_allergies", JSON.stringify(allergyList));
+  };
+
+  const saveFavoritesData = (favList: typeof favorites, folderList: typeof folders) => {
+    localStorage.setItem("mpasi_favorites", JSON.stringify(favList));
+    localStorage.setItem("mpasi_folders", JSON.stringify(folderList));
+  };
+
   const hour = new Date().getHours();
   const greeting =
     hour < 5  ? "Selamat Dini Hari" :
@@ -324,7 +413,11 @@ export default function HomePage() {
       const res = await fetch("/api/generate-meals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ingredients }),
+        body: JSON.stringify({
+          ingredients,
+          childName,
+          allergies
+        }),
       });
 
       const data = await res.json();
@@ -342,9 +435,90 @@ export default function HomePage() {
     }
   }
 
+  /* ─── Profile Operations ─── */
+  function addAllergy() {
+    const allergy = newAllergyInput.trim();
+    if (allergy && !allergies.includes(allergy)) {
+      const updated = [...allergies, allergy];
+      setAllergies(updated);
+      saveProfileData(childName, updated);
+    }
+    setNewAllergyInput("");
+  }
+
+  function removeAllergy(name: string) {
+    const updated = allergies.filter((a) => a !== name);
+    setAllergies(updated);
+    saveProfileData(childName, updated);
+  }
+
+  /* ─── Folder & Favorites Operations ─── */
+  function handleInitiateSave(meal: MealEntry) {
+    // Check if already favorited
+    const existingIndex = favorites.findIndex((f) => f.meal.name === meal.name);
+    if (existingIndex > -1) {
+      // Remove it if favorited again
+      const updated = favorites.filter((f) => f.meal.name !== meal.name);
+      setFavorites(updated);
+      saveFavoritesData(updated, folders);
+    } else {
+      // Open selector to choose folder
+      setSelectedMealForSave(meal);
+      setShowFolderModal(true);
+    }
+  }
+
+  function handleConfirmSaveToFolder(folderId: string) {
+    if (!selectedMealForSave) return;
+    const newFav = {
+      id: Math.random().toString(36).substring(7),
+      meal: selectedMealForSave,
+      folderId
+    };
+    const updated = [...favorites, newFav];
+    setFavorites(updated);
+    saveFavoritesData(updated, folders);
+    setShowFolderModal(false);
+    setSelectedMealForSave(null);
+  }
+
+  function handleCreateFolder() {
+    const name = newFolderName.trim();
+    if (name) {
+      const newFolder = {
+        id: Math.random().toString(36).substring(7),
+        name
+      };
+      const updatedFolders = [...folders, newFolder];
+      setFolders(updatedFolders);
+      saveFavoritesData(favorites, updatedFolders);
+      setNewFolderName("");
+    }
+  }
+
+  function handleDeleteFolder(folderId: string) {
+    if (folderId === "default") return;
+    const updatedFolders = folders.filter((f) => f.id !== folderId);
+    // Move favorited items in that folder to default folder
+    const updatedFavs = favorites.map((f) => 
+      f.folderId === folderId ? { ...f, folderId: "default" } : f
+    );
+    setFolders(updatedFolders);
+    setFavorites(updatedFavs);
+    saveFavoritesData(updatedFavs, updatedFolders);
+    if (activeFolderId === folderId) {
+      setActiveFolderId("default");
+    }
+  }
+
   const suggestionsToShow = SUGGESTED_INGREDIENTS.filter(
     (s) => !ingredients.includes(s)
   ).slice(0, 8);
+
+  // Filtered favorites by active folder
+  const favoritesToShow = favorites.filter((f) => 
+    activeFolderId === "default" ? true : f.folderId === activeFolderId
+  );
 
   return (
     <>
@@ -353,231 +527,485 @@ export default function HomePage() {
         className="flex-1 overflow-y-auto scrollbar-hide pb-28"
         style={{ paddingTop: "var(--safe-top)" }}
       >
-        {/* ─── Header ─────────────────── */}
-        <header className="px-5 pt-6 pb-4 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold tracking-widest uppercase mb-0.5"
-                style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
-                {greeting}, Mama 👋
-              </p>
-              <h1 className="text-2xl font-extrabold leading-tight"
-                style={{ fontFamily: "var(--font-display)" }}>
-                <span className="text-gradient-teal">Smart Fridge</span>
-                <br />
-                <span style={{ color: "var(--text-primary)" }}>MPASI AI</span>
-              </h1>
-            </div>
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
-              style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-teal)" }}>
-              <span className="text-xl">👶</span>
-            </div>
-          </div>
-          <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Rencanakan{" "}
-            <strong style={{ color: "var(--color-amber-300)" }}>5 menu MPASI</strong>{" "}
-            besok dari bahan kulkas yang ada. Tidak perlu scroll TikTok lagi!
-          </p>
-        </header>
-
-        {/* ─── Stats Bar ──────────────── */}
-        <div className="px-5 mb-5 animate-fade-up stagger-1">
-          <div className="glass rounded-2xl p-4 flex items-center justify-between gap-3">
-            {[
-              { value: "5",     label: "Menu/Hari",    color: "var(--color-teal-400)"   },
-              { value: "<30",   label: "Menit Masak",  color: "var(--color-amber-300)"  },
-              { value: "100%",  label: "AI-Powered",   color: "var(--color-teal-300)"   },
-            ].map((stat) => (
-              <div key={stat.label} className="flex flex-col items-center flex-1">
-                <span className="text-2xl font-extrabold leading-none"
-                  style={{ color: stat.color, fontFamily: "var(--font-display)" }}>
-                  {stat.value}
-                </span>
-                <span className="text-[10px] font-semibold mt-1 tracking-wide text-center"
-                  style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
-                  {stat.label}
-                </span>
+        {/* ─── HOME TAB ────────────────────────────────────────────────────────── */}
+        {activeNav === "home" && (
+          <>
+            <header className="px-5 pt-6 pb-4 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold tracking-widest uppercase mb-0.5"
+                    style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
+                    {greeting}, Mama {childName} 👋
+                  </p>
+                  <h1 className="text-2xl font-extrabold leading-tight"
+                    style={{ fontFamily: "var(--font-display)" }}>
+                    <span className="text-gradient-teal">Smart Fridge</span>
+                    <br />
+                    <span style={{ color: "var(--text-primary)" }}>MPASI AI</span>
+                  </h1>
+                </div>
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
+                  style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-teal)" }}>
+                  <span className="text-xl">👶</span>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ─── Fridge Inventory ─────── */}
-        <section className="px-5 mb-5 animate-fade-up stagger-2">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "rgba(15,118,110,0.2)" }}>
-              <IconFridge size={15} />
-            </div>
-            <h2 className="text-base font-bold"
-              style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-              Isi Kulkas Saya
-            </h2>
-            {ingredients.length > 0 && (
-              <span className="ml-auto text-xs font-bold px-2.5 py-0.5 rounded-full"
-                style={{ background: "rgba(15,118,110,0.2)", color: "var(--color-teal-400)" }}>
-                {ingredients.length} bahan
-              </span>
-            )}
-          </div>
-
-          <div className="rounded-2xl p-3"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
-            <div className="flex flex-wrap gap-2 min-h-[40px] mb-3">
-              {ingredients.map((ing) => (
-                <span key={ing} className="tag-pill group">
-                  {ing}
-                  <button id={`remove-${ing}`} onClick={() => removeIngredient(ing)}
-                    className="ml-0.5 opacity-60 group-hover:opacity-100 transition-opacity hover:text-red-400"
-                    aria-label={`Hapus ${ing}`}>
-                    <IconClose size={11} />
-                  </button>
-                </span>
-              ))}
-              {ingredients.length === 0 && (
-                <p className="text-sm self-center" style={{ color: "var(--text-muted)" }}>
-                  Belum ada bahan. Ketik di bawah...
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <input
-                id="ingredient-input"
-                type="text"
-                className="input-field text-sm flex-1"
-                placeholder="Ketik bahan, lalu Enter..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleInputKeyDown}
-                aria-label="Tambah bahan makanan"
-              />
-              <button
-                id="add-ingredient-btn"
-                onClick={() => addIngredient(inputValue)}
-                disabled={!inputValue.trim()}
-                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 disabled:opacity-30 transition-all hover:scale-105 active:scale-95"
-                style={{
-                  background: "var(--gradient-brand)",
-                  boxShadow: inputValue.trim() ? "var(--shadow-glow-sm)" : "none",
-                }}
-                aria-label="Tambah bahan">
-                <IconPlus size={18} />
-              </button>
-            </div>
-          </div>
-
-          {suggestionsToShow.length > 0 && (
-            <div className="mt-3">
-              <p className="text-[11px] font-semibold tracking-widest uppercase mb-2"
-                style={{ color: "var(--text-muted)" }}>
-                Cepat tambah:
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                Rencanakan <strong style={{ color: "var(--color-amber-300)" }}>5 menu MPASI</strong> besok. Integrasi pencarian video step-by-step TikTok disertakan!
               </p>
-              <div className="flex flex-wrap gap-1.5">
-                {suggestionsToShow.map((s) => (
-                  <button id={`suggest-${s}`} key={s} onClick={() => addIngredient(s)}
-                    className="text-xs px-3 py-1.5 rounded-full transition-all active:scale-95"
-                    style={{
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--border-subtle)",
-                      color: "var(--text-secondary)",
-                      fontFamily: "var(--font-display)",
-                    }}>
-                    + {s}
-                  </button>
+            </header>
+
+            {/* Stats Bar */}
+            <div className="px-5 mb-5 animate-fade-up stagger-1">
+              <div className="glass rounded-2xl p-4 flex items-center justify-between gap-3">
+                {[
+                  { value: "5",     label: "Menu/Hari",    color: "var(--color-teal-400)"   },
+                  { value: "<30",   label: "Menit Masak",  color: "var(--color-amber-300)"  },
+                  { value: "100%",  label: "TikTok Link",  color: "var(--color-teal-300)"   },
+                ].map((stat) => (
+                  <div key={stat.label} className="flex flex-col items-center flex-1">
+                    <span className="text-2xl font-extrabold leading-none"
+                      style={{ color: stat.color, fontFamily: "var(--font-display)" }}>
+                      {stat.value}
+                    </span>
+                    <span className="text-[10px] font-semibold mt-1 tracking-wide text-center"
+                      style={{ color: "var(--text-muted)", fontFamily: "var(--font-display)" }}>
+                      {stat.label}
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
-          )}
-        </section>
 
-        {/* ─── Generate CTA ─────────── */}
-        <div className="px-5 mb-6 animate-fade-up stagger-3">
-          {ingredients.length === 0 && (
-            <p className="text-center text-xs mb-2" style={{ color: "var(--text-muted)" }}>
-              Tambahkan minimal 1 bahan untuk melanjutkan
-            </p>
-          )}
-          <button
-            id="generate-matrix-btn"
-            className="btn-primary"
-            onClick={handleGenerate}
-            disabled={isLoading || ingredients.length === 0}
-            aria-label="Generate meal matrix dengan AI">
-            {isLoading ? (
-              <>
-                <div className="dot-loader"><span /><span /><span /></div>
-                <span>AI sedang berpikir...</span>
-              </>
-            ) : matrix ? (
-              <>
-                <IconRefresh size={18} />
-                <span>Generate Ulang Matrix</span>
-              </>
-            ) : (
-              <>
-                <IconSpark size={20} />
-                <span>Generate Matrix Besok</span>
-              </>
-            )}
-          </button>
+            {/* Fridge Inventory */}
+            <section className="px-5 mb-5 animate-fade-up stagger-2">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                  style={{ background: "rgba(15,118,110,0.2)" }}>
+                  <IconFridge size={15} />
+                </div>
+                <h2 className="text-base font-bold"
+                  style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
+                  Isi Kulkas Saya
+                </h2>
+                {ingredients.length > 0 && (
+                  <span className="ml-auto text-xs font-bold px-2.5 py-0.5 rounded-full"
+                    style={{ background: "rgba(15,118,110,0.2)", color: "var(--color-teal-400)" }}>
+                    {ingredients.length} bahan
+                  </span>
+                )}
+              </div>
 
-          {/* Error message */}
-          {error && (
-            <div className="mt-3 rounded-xl p-3 animate-fade-in"
-              style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
-              <p className="text-xs text-center" style={{ color: "#fca5a5" }}>⚠️ {error}</p>
+              <div className="rounded-2xl p-3"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+                <div className="flex flex-wrap gap-2 min-h-[40px] mb-3">
+                  {ingredients.map((ing) => (
+                    <span key={ing} className="tag-pill group">
+                      {ing}
+                      <button id={`remove-${ing}`} onClick={() => removeIngredient(ing)}
+                        className="ml-0.5 opacity-60 group-hover:opacity-100 transition-opacity hover:text-red-400"
+                        aria-label={`Hapus ${ing}`}>
+                        <IconClose size={11} />
+                      </button>
+                    </span>
+                  ))}
+                  {ingredients.length === 0 && (
+                    <p className="text-sm self-center" style={{ color: "var(--text-muted)" }}>
+                      Belum ada bahan. Ketik di bawah...
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    id="ingredient-input"
+                    type="text"
+                    className="input-field text-sm flex-1"
+                    placeholder="Ketik bahan, lalu Enter..."
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleInputKeyDown}
+                  />
+                  <button
+                    id="add-ingredient-btn"
+                    onClick={() => addIngredient(inputValue)}
+                    disabled={!inputValue.trim()}
+                    className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 disabled:opacity-30 transition-all hover:scale-105 active:scale-95"
+                    style={{ background: "var(--gradient-brand)" }}>
+                    <IconPlus size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {suggestionsToShow.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-[11px] font-semibold tracking-widest uppercase mb-2"
+                    style={{ color: "var(--text-muted)" }}>
+                    Cepat tambah:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {suggestionsToShow.map((s) => (
+                      <button id={`suggest-${s}`} key={s} onClick={() => addIngredient(s)}
+                        className="text-xs px-3 py-1.5 rounded-full transition-all active:scale-95"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          border: "1px solid var(--border-subtle)",
+                          color: "var(--text-secondary)",
+                        }}>
+                        + {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Generate Button */}
+            <div className="px-5 mb-6 animate-fade-up stagger-3">
+              <button
+                id="generate-matrix-btn"
+                className="btn-primary"
+                onClick={handleGenerate}
+                disabled={isLoading || ingredients.length === 0}
+                aria-label="Generate meal matrix dengan AI">
+                {isLoading ? (
+                  <>
+                    <div className="dot-loader"><span /><span /><span /></div>
+                    <span>AI sedang berpikir...</span>
+                  </>
+                ) : matrix ? (
+                  <>
+                    <IconRefresh size={18} />
+                    <span>Generate Ulang Matrix</span>
+                  </>
+                ) : (
+                  <>
+                    <IconSpark size={20} />
+                    <span>Generate Matrix Besok</span>
+                  </>
+                )}
+              </button>
+
+              {error && (
+                <div className="mt-3 rounded-xl p-3 animate-fade-in"
+                  style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                  <p className="text-xs text-center" style={{ color: "#fca5a5" }}>⚠️ {error}</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* ─── 5-Meal Matrix ──────────── */}
-        <section className="px-5 animate-fade-up stagger-4">
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-base font-bold"
-              style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-              Matrix 5 Meal
-            </h2>
-            <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
-              style={{
-                background: matrix ? "rgba(45,212,191,0.15)" : "rgba(45,212,191,0.08)",
-                color: matrix ? "var(--color-teal-400)" : "var(--text-muted)",
-                border: matrix ? "1px solid rgba(45,212,191,0.3)" : "none",
-              }}>
-              {matrix ? "✓ AI Generated" : "Menunggu AI"}
-            </span>
-          </div>
+            {/* 5-Meal Matrix */}
+            <section className="px-5 animate-fade-up stagger-4">
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>
+                  Matrix 5 Meal
+                </h2>
+                <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
+                  style={{
+                    background: matrix ? "rgba(45,212,191,0.15)" : "rgba(45,212,191,0.08)",
+                    color: matrix ? "var(--color-teal-400)" : "var(--text-muted)",
+                  }}>
+                  {matrix ? "✓ AI Generated" : "Menunggu AI"}
+                </span>
+              </div>
 
-          {isLoading ? (
-            <div className="space-y-3">
-              {MEAL_SLOTS.map((slot) => <SkeletonCard key={slot.id} />)}
-            </div>
-          ) : matrix ? (
-            <div className="space-y-3">
-              {MEAL_SLOTS.map((slot, i) => (
-                <MealCard
-                  key={slot.id}
-                  slot={slot}
-                  meal={matrix[slot.id]}
-                  index={i}
-                />
-              ))}
-              {/* Generated timestamp */}
-              <p className="text-center text-[10px] pt-1 pb-2"
-                style={{ color: "var(--text-muted)" }}>
-                Dibuat pukul {new Date(matrix.generatedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} · Groq LLaMA 3
+              {isLoading ? (
+                <div className="space-y-3">
+                  {MEAL_SLOTS.map((slot) => <SkeletonCard key={slot.id} />)}
+                </div>
+              ) : matrix ? (
+                <div className="space-y-3">
+                  {MEAL_SLOTS.map((slot, i) => (
+                    <MealCard
+                      key={slot.id}
+                      slot={slot}
+                      meal={matrix[slot.id]}
+                      index={i}
+                      onSaveFavorite={handleInitiateSave}
+                      isFavorite={favorites.some((f) => f.meal.name === matrix[slot.id].name)}
+                    />
+                  ))}
+                  <p className="text-center text-[10px] pt-1 pb-2" style={{ color: "var(--text-muted)" }}>
+                    Dibuat pukul {new Date(matrix.generatedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} · Groq LLaMA 3
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {MEAL_SLOTS.map((slot, i) => (
+                    <PlaceholderCard key={slot.id} slot={slot} index={i} />
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
+        {/* ─── FAVORITES TAB ─────────────────────────────────────────────────── */}
+        {activeNav === "favorites" && (
+          <div className="px-5 pt-6 animate-fade-in">
+            <header className="mb-6">
+              <p className="text-xs font-semibold tracking-widest uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>
+                Koleksi Resep
               </p>
+              <h1 className="text-2xl font-extrabold leading-tight">
+                <span className="text-gradient-amber">Koleksi Favorit</span>
+              </h1>
+              <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+                Kategorikan resep favorit Mama agar mudah dicari kembali saat terburu-buru.
+              </p>
+            </header>
+
+            {/* Create Folder Bar */}
+            <div className="rounded-2xl p-3 mb-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+              <p className="text-xs font-bold uppercase mb-2" style={{ color: "var(--text-muted)" }}>
+                Buat Folder Koleksi Baru
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Contoh: Anti GTM, Khusus Pagi..."
+                  className="input-field text-xs flex-1 py-2"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                />
+                <button
+                  onClick={handleCreateFolder}
+                  className="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+                  style={{ background: "var(--gradient-brand)", color: "white" }}
+                >
+                  Buat
+                </button>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {MEAL_SLOTS.map((slot, i) => (
-                <PlaceholderCard key={slot.id} slot={slot} index={i} />
+
+            {/* Folders List (TikTok style collections) */}
+            <div className="mb-6">
+              <p className="text-xs font-bold uppercase mb-2.5" style={{ color: "var(--text-muted)" }}>
+                Folders
+              </p>
+              <div className="flex flex-col gap-2">
+                {folders.map((folder) => {
+                  const isSelected = activeFolderId === folder.id;
+                  const count = folder.id === "default" 
+                    ? favorites.length 
+                    : favorites.filter((f) => f.folderId === folder.id).length;
+
+                  return (
+                    <div
+                      key={folder.id}
+                      className="flex items-center justify-between p-3 rounded-xl transition-all"
+                      style={{
+                        background: isSelected ? "rgba(251,191,36,0.08)" : "var(--bg-card)",
+                        border: `1px solid ${isSelected ? "rgba(251,191,36,0.3)" : "var(--border-subtle)"}`
+                      }}
+                    >
+                      <button
+                        onClick={() => setActiveFolderId(folder.id)}
+                        className="flex-1 flex items-center gap-3 text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ background: isSelected ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.05)", color: isSelected ? "var(--color-amber-300)" : "var(--text-secondary)" }}>
+                          <IconFolder size={14} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold" style={{ color: isSelected ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                            {folder.name}
+                          </p>
+                          <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                            {count} resep disimpan
+                          </p>
+                        </div>
+                      </button>
+
+                      {folder.id !== "default" && (
+                        <button
+                          onClick={() => handleDeleteFolder(folder.id)}
+                          className="p-1 text-red-400 opacity-60 hover:opacity-100 transition-opacity"
+                          title="Hapus folder"
+                        >
+                          <IconClose size={12} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Favorited Recipes List */}
+            <div>
+              <p className="text-xs font-bold uppercase mb-3" style={{ color: "var(--text-muted)" }}>
+                Resep di Folder Ini
+              </p>
+
+              <div className="space-y-3">
+                {favoritesToShow.map((fav, i) => (
+                  <MealCard
+                    key={fav.id}
+                    slot={MEAL_SLOTS[i % MEAL_SLOTS.length]} // Mock slot design matching index
+                    meal={fav.meal}
+                    index={i}
+                    onSaveFavorite={handleInitiateSave}
+                    isFavorite={true}
+                  />
+                ))}
+
+                {favoritesToShow.length === 0 && (
+                  <div className="text-center py-8 rounded-2xl" style={{ border: "1px dashed var(--border-default)" }}>
+                    <span className="text-2xl opacity-60">📂</span>
+                    <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
+                      Belum ada resep di folder ini.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── SETTINGS TAB ─────────────────────────────────────────────────── */}
+        {activeNav === "settings" && (
+          <div className="px-5 pt-6 animate-fade-in">
+            <header className="mb-6">
+              <p className="text-xs font-semibold tracking-widest uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>
+                Profil
+              </p>
+              <h1 className="text-2xl font-extrabold leading-tight">
+                <span className="text-gradient-teal">Pengaturan</span>
+              </h1>
+              <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+                Pengaturan nama anak dan alergi untuk penyesuaian resep otomatis.
+              </p>
+            </header>
+
+            {/* Child Profile Section */}
+            <section className="space-y-5">
+              <div className="rounded-2xl p-4 space-y-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+                <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                  Profil Anak 👶
+                </h3>
+
+                {/* Input Name */}
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>
+                    Nama Panggilan Anak
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field text-sm"
+                    value={childName}
+                    onChange={(e) => {
+                      setChildName(e.target.value);
+                      saveProfileData(e.target.value, allergies);
+                    }}
+                    placeholder="Contoh: Adek"
+                  />
+                </div>
+
+                {/* Allergies / Ignored Ingredients */}
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider block mb-1.5" style={{ color: "var(--text-muted)" }}>
+                    Bahan Alergi / Dihindari
+                  </label>
+                  
+                  {/* Allergy tag list */}
+                  <div className="flex flex-wrap gap-1.5 mb-2.5">
+                    {allergies.map((allergy) => (
+                      <span key={allergy} className="text-xs px-2.5 py-1 rounded-full flex items-center gap-1"
+                        style={{ background: "rgba(239,68,68,0.1)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.2)" }}>
+                        {allergy}
+                        <button onClick={() => removeAllergy(allergy)} className="hover:text-red-400">
+                          <IconClose size={10} />
+                        </button>
+                      </span>
+                    ))}
+                    {allergies.length === 0 && (
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        Tidak ada alergi terdaftar.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Add Allergy input */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Ketik bahan alergi (cth: Udang)"
+                      className="input-field text-xs flex-1 py-2"
+                      value={newAllergyInput}
+                      onChange={(e) => setNewAllergyInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && addAllergy()}
+                    />
+                    <button
+                      onClick={addAllergy}
+                      className="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+                      style={{ background: "rgba(239,68,68,0.2)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.3)" }}
+                    >
+                      Tambah
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Developer Info / App Settings */}
+              <div className="rounded-2xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}>
+                <h3 className="text-sm font-bold mb-2" style={{ color: "var(--text-primary)" }}>
+                  Informasi Aplikasi
+                </h3>
+                <div className="space-y-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+                  <div className="flex justify-between py-1 border-b border-[rgba(255,255,255,0.05)]">
+                    <span>Versi Aplikasi</span>
+                    <span className="font-mono">v1.2.0 (PWA)</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-[rgba(255,255,255,0.05)]">
+                    <span>Engine AI</span>
+                    <span>Groq LLaMA 3.3 70B</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-[rgba(255,255,255,0.05)]">
+                    <span>Penyimpanan Lokal</span>
+                    <span>Aktif (localStorage)</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+      </main>
+
+      {/* ── Folder Selection Modal ── */}
+      {showFolderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-3xl p-5 shadow-2xl animate-fade-up"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)" }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>
+                Pilih Folder Koleksi
+              </h3>
+              <button onClick={() => setShowFolderModal(false)} className="text-white opacity-60 hover:opacity-100">
+                <IconClose size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
+              Simpan resep <strong style={{ color: "var(--text-accent)" }}>{selectedMealForSave?.name}</strong> ke dalam folder:
+            </p>
+
+            <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-hide mb-4">
+              {folders.map((folder) => (
+                <button
+                  key={folder.id}
+                  onClick={() => handleConfirmSaveToFolder(folder.id)}
+                  className="w-full flex items-center justify-between p-3 rounded-xl transition-all hover:bg-[rgba(255,255,255,0.04)]"
+                  style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)" }}
+                >
+                  <span className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>{folder.name}</span>
+                  <IconFolder size={14} />
+                </button>
               ))}
             </div>
-          )}
-        </section>
-      </main>
+          </div>
+        </div>
+      )}
 
       {/* ── Bottom Navigation ────────── */}
       <nav className="bottom-nav" aria-label="Navigasi utama">
