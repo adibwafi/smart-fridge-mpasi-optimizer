@@ -1,36 +1,120 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 👶 Smart Fridge MPASI Optimizer
 
-## Getting Started
+Smart Fridge MPASI Optimizer adalah aplikasi PWA (Progressive Web App) mobile-first yang dirancang khusus untuk membantu ibu bekerja yang memiliki waktu terbatas (30 menit di pagi hari) dalam merencanakan menu MPASI (Makanan Pendamping ASI) 5 kali sehari untuk anak balita usia 16 bulan.
 
-First, run the development server:
+Aplikasi ini dibangun menggunakan arsitektur **100% Free Tier** untuk efisiensi biaya maksimal, dengan integrasi pencarian visual TikTok untuk mempermudah Mama melihat video tutorial memasak secara instan tanpa perlu berselancar manual.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 🚀 Fitur Utama
+
+1. **Dashboard Inventory Kulkas**: Input tag dinamis cepat dengan saran bahan makanan populer sekali klik untuk memantau isi kulkas Mama.
+2. **Matrix 5 Menu MPASI Harian (Groq AI)**: Menghasilkan rencana 5 menu lengkap (Sarapan, Selingan Pagi, Makan Siang, Selingan Sore, Makan Malam) yang dirancang oleh ahli nutrisi anak virtual.
+3. **Pencarian Video Tutorial TikTok Dinamis**: Tombol shortcut di setiap resep yang otomatis mencarikan video tutorial masak di TikTok sesuai nama menu rekomendasi AI.
+4. **Koleksi Folder Favorit (Khas TikTok)**: Mengelompokkan resep favorit Mama ke dalam folder-folder kustom seperti "Resep Cepat Pagi", "Anti GTM", atau folder buatan sendiri.
+5. **Manajemen Profil Anak & Alergi**: Menghindari bahan makanan alergen secara dinamis. AI tidak akan pernah merekomendasikan bahan yang terdaftar sebagai alergen anak.
+6. **Sinkronisasi Supabase dengan Fallback Offline**: Sinkronisasi data cloud real-time ke Supabase PostgreSQL, dengan mode fallback otomatis ke `localStorage` (offline/lokal) jika Supabase belum dikonfigurasikan.
+
+---
+
+## 🛠️ Stack Teknologi (100% Free Tier)
+
+* **Framework**: Next.js App Router (React, Tailwind CSS)
+* **PWA Engine**: Serwist (Service Worker precaching & offline support)
+* **AI Engine**: Groq API LLaMA 3.3 70B (Sangat Cepat & Free Tier Kuota Besar)
+* **Database**: Supabase PostgreSQL (Free Tier 500MB)
+* **Deployment**: Vercel (Hobby Tier Free)
+
+---
+
+## 📋 Skema Database (Supabase)
+
+Salin dan jalankan script SQL berikut di menu **SQL Editor** pada Dashboard Supabase Anda sebelum menghubungkan aplikasi:
+
+```sql
+-- Tabel untuk menyimpan bahan kulkas aktif Mama
+CREATE TABLE fridge_inventory (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Tabel untuk menyimpan folder koleksi favorit Mama
+CREATE TABLE folders (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Tabel untuk menyimpan resep favorit Mama beserta relasi kategorinya
+CREATE TABLE favorite_meals (
+  id TEXT PRIMARY KEY,
+  folder_id TEXT DEFAULT 'default' REFERENCES folders(id) ON DELETE SET DEFAULT,
+  name TEXT NOT NULL,
+  description TEXT,
+  ingredients TEXT[] NOT NULL,
+  instructions TEXT[] NOT NULL,
+  cooking_time INTEGER NOT NULL,
+  nutrition_highlight TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Insert folder bawaan
+INSERT INTO folders (id, name) VALUES 
+  ('default', 'Semua Favorit'),
+  ('fast', 'Sarapan Cepat'),
+  ('nogtm', 'Anti GTM')
+ON CONFLICT (id) DO NOTHING;
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Panduan Instalasi Lokal
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Klon Repositori
+```bash
+git clone https://github.com/adibwafi/smart-fridge-mpasi-optimizer.git
+cd smart-fridge-mpasi-optimizer
+```
 
-## Learn More
+### 2. Instal Dependensi
+```bash
+npm install
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Konfigurasi Variabel Lingkungan (`.env.local`)
+Buat file bernama `.env.local` di direktori root proyek dan masukkan key Anda:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+# API Key dari console.groq.com (Gratis)
+GROQ_API_KEY=gsk_xxx...
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Opsional: Jika ingin menggunakan sinkronisasi Cloud Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://proyek_anda.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1...
+```
 
-## Deploy on Vercel
+*Catatan: Jika variabel Supabase di atas tidak diisi, aplikasi akan tetap berjalan normal menggunakan mode penyimpanan Local/Offline.*
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. Jalankan Server Pengembangan
+```bash
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Buka **[http://localhost:3000](http://localhost:3000)** di browser Anda.
+
+---
+
+## 📱 Panduan PWA (Pasang di Handphone)
+
+1. Jalankan server lokal atau deploy ke Vercel (pastikan menggunakan protokol HTTPS).
+2. Buka web tersebut di browser Handphone Anda (Safari untuk iOS, Chrome untuk Android).
+3. Klik tombol **Bagikan/Share** (iOS) atau **Menu Titik Tiga** (Android).
+4. Pilih opsi **"Tambah ke Layar Utama" / "Add to Home Screen"**.
+5. Aplikasi "Smart Fridge MPASI Optimizer" akan terpasang di handphone Anda layaknya aplikasi native dengan dukungan mode offline dan loading instan!
+
+---
+
+## 📄 Lisensi
+
+Proyek ini dilisensikan di bawah lisensi MIT.
